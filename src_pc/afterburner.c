@@ -839,9 +839,9 @@ static void updateProgressBar(char* label, int current, int total) {
 // Upload fusemap in byte format (as opposed to bit format used in JEDEC file).
 static char upload() {
     char fuseSet;
-    char buf[MAX_LINE];
+    char* buf = malloc(MAX_LINE);
     char line[64];
-    unsigned int i, j, n;
+    int i, j;
     unsigned short csum;
     int apdFuse = flagEnableApd;
     int totalFuses = galinfo[gal].fuses;
@@ -912,6 +912,7 @@ static char upload() {
     sprintf(buf, "#c %04X\r", csum);
     sendLine(buf, MAX_LINE, 300);
 
+    free(buf);
     //end of upload
     return sendGenericCommand("#e\r", "Upload failed", 300, 0); 
 
@@ -943,8 +944,6 @@ static char sendGenericCommand(const char* command, const char* errorText, int m
 }
 
 static char operationWriteOrVerify(char doWrite) {
-    char buf[MAX_LINE];
-    int readSize;
 
     char result;
 
@@ -1087,7 +1086,6 @@ static char operationMeasureVpp(void) {
 
 
 static char operationSetGalCheck(void) {
-    int readSize;
     char result;
 
     if (openSerial() != 0) {
@@ -1099,8 +1097,7 @@ static char operationSetGalCheck(void) {
 }
 
 static char operationSetGalType(Galtype type) {
-    char buf[MAX_LINE];
-    int readSize;
+    char* buf = malloc(MAX_LINE);
     char result;
 
     if (openSerial() != 0) {
@@ -1109,14 +1106,15 @@ static char operationSetGalType(Galtype type) {
     if (verbose) {
         printf("sending 'g' command type=%i\n", type);
     }
-    sprintf(buf, "g%c\r", '0' + (int)type); 
+    if(buf!=NULL)
+        sprintf(buf, "g%c\r", '0' + (int)type); 
     result = sendGenericCommand(buf, "setGalType failed ?", 4000, 0);
+    free(buf);
     closeSerial();
     return result;    
 }
 
 static char operationSecureGal() {
-    int readSize;
     char result;
 
     if (openSerial() != 0) {
@@ -1131,8 +1129,7 @@ static char operationSecureGal() {
 }
 
 static char operationWritePes(void) {
-    char buf[MAX_LINE];
-    int readSize;
+    char* buf = malloc(MAX_LINE);
     char result;
 
     if (openSerial() != 0) {
@@ -1140,33 +1137,36 @@ static char operationWritePes(void) {
     }
 
     //Switch to upload mode to specify GAL
-    sprintf(buf, "u\r");
-    sendLine(buf, MAX_LINE, 300);
+    if (buf != NULL) {
+    
+        sprintf(buf, "u\r");
+        sendLine(buf, MAX_LINE, 300);
 
-    //set GAL type
-    sprintf(buf, "#t %c\r", '0' + (int) gal);
-    sendLine(buf, MAX_LINE, 300);
+        //set GAL type
+        sprintf(buf, "#t %c\r", '0' + (int) gal);
+        sendLine(buf, MAX_LINE, 300);
 
-    //set new PES
-    sprintf(buf, "#p %s\r", pesString);
-    sendLine(buf, MAX_LINE, 300);
+        //set new PES
+        sprintf(buf, "#p %s\r", pesString);
+        sendLine(buf, MAX_LINE, 300);
 
-    //Exit upload mode (ensure the return texts are discarded by waiting 100 ms)
-    sprintf(buf, "#e\r");
-    sendLine(buf, MAX_LINE, 100);
+        //Exit upload mode (ensure the return texts are discarded by waiting 100 ms)
+        sprintf(buf, "#e\r");
+        sendLine(buf, MAX_LINE, 100);
+    }
 
     if (verbose) {
         printf("sending 'P' command...\n");
     }
     result = sendGenericCommand("P\r", "write PES failed ?", 4000, 0);
 
+    free(buf);
     closeSerial();
     return result;
 }
 
 static char operationEraseGal(void) {
-    char buf[MAX_LINE];
-    int readSize;
+    char* buf = malloc(MAX_LINE);
     char result;
 
     if (openSerial() != 0) {
@@ -1190,7 +1190,7 @@ static char operationEraseGal(void) {
     } else {
         result = sendGenericCommand("c\r", "erase failed ?", 4000, 0);
     }
-
+    free(buf);
     closeSerial();
     return result;
 }
@@ -1529,7 +1529,6 @@ static int processJtag(void) {
 
 int main(int argc, char** argv) {
     char result = 0;
-    int i;
 
     result = checkArgs(argc, argv);
     if (result) {

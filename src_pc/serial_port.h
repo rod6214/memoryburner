@@ -15,11 +15,11 @@ char guessedSerialDevice[512] = {0};
 #ifdef NO_CLOSE
 static SerialDeviceHandle serH = INVALID_HANDLE;
 #endif
+static char buf[64 * 1024] = {0};
 
 // ideas: https://stackoverflow.com/questions/1388871/how-do-i-get-a-list-of-available-serial-ports-in-win32
 static void serialDeviceGuessName(char** deviceName) {
-    char buf[64 * 1024] = {0};
-    int size = QueryDosDevice(NULL, buf, 64 * 1024);
+    int size = QueryDosDevice(NULL, buf, sizeof buf / sizeof buf[0]);
     int topComNum = 0;
 
     // buffer was filled in
