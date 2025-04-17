@@ -7,6 +7,8 @@
 #define __AFTB_VPP_H__
 
 #include <EEPROM.h>
+#include "utils.h"
+#include "aftb_x9c103s.H"
 
 // ensure mcp4131 pot uses the right pins
 #define POT_CS   A3
@@ -54,8 +56,6 @@
 #define VPP_16V5  15
 
 #define MAX_WIPER 16
-
-#define VPP_VERBOSE 0
 
 #ifdef EXTERNAL
 #define ANALOG_REF_EXTERNAL EXTERNAL
@@ -255,7 +255,7 @@ static uint8_t varVppCalibrateVpp(void) {
             if (r1 > r2) {
               r2 = r1;
             }
-            d1 = r1 - v;
+            d1 = r1 - v; // d1 is not useful
             d2 = r2 - v;
             d1 = ABS(d1);
             d2 = ABS(d2);
@@ -358,6 +358,7 @@ static int8_t varVppInit(void) {
     analogReference(ANALOG_REF_EXTERNAL); //use 3V3 external reference
     analogRead(VPP);            // Perform a dummy conversion referring to the datasheet
 
+#if defined(POT_MCP4131)
     wiperStat = 0; //wiper disabled
     mcp4131_init();
     if (mcp4131_detect()) {
@@ -372,6 +373,26 @@ static int8_t varVppInit(void) {
 #endif
         return FAIL;
     }
+#endif
+
+#if defined(POT_X9C103S)
+    if (x9c103s_detect()) {
+#if VPP_VERBOSE
+        Serial.print(F("X9C103S"));
+        Serial.println(F(" POT found"));
+#endif
+        return OK;
+    } else {
+#if VPP_VERBOSE
+        Serial.println(F("POT not found"));
+#endif
+        return FAIL;
+    }
+#else 
+    Serial.println(F("POT not configured"));
+    return FAIL;
+#endif
+
 }
 
 //return 1 on success (VPP calibration appears correct), 0 on failure
