@@ -674,6 +674,13 @@ void setup() {
   x9c103s_init();
   varVppExists = varVppInit();
 
+
+  // x9c103s_reg(42);
+
+  // while(1) {
+  //   varVppMeasureVpp(1);
+  //   delay(1000);
+  // }
   // shift register
   pinMode(PIN_SHR_EN, OUTPUT);
 
@@ -2854,17 +2861,32 @@ static void measureVppValues(void) {
   Serial.print(F("VPP: 9.0V : "));
   measureVpp(VPP_9V0);
 
+  Serial.print(F("VPP: 9.5V : "));
+  measureVpp(VPP_9V5);
+
   Serial.print(F("VPP: 10.0V : "));
   measureVpp(VPP_10V0);
+
+  Serial.print(F("VPP: 10.5V : "));
+  measureVpp(VPP_10V5);
 
   Serial.print(F("VPP: 12.0V : "));
   measureVpp(VPP_12V0);
 
+  Serial.print(F("VPP: 12.5V : "));
+  measureVpp(VPP_12V5);
+
   Serial.print(F("VPP: 14.0V : "));
   measureVpp(VPP_14V0);
 
+  Serial.print(F("VPP: 14.5V : "));
+  measureVpp(VPP_14V5);
+
   Serial.print(F("VPP: 16.0V : "));
   measureVpp(VPP_16V0);
+
+  Serial.print(F("VPP: 16.5V : "));
+  measureVpp(VPP_16V5);
 
   varVppSet(VPP_5V0);
 }

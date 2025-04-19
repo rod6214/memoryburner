@@ -555,7 +555,7 @@ static int8_t varVppCalibrate(void) {
     varrVppTestRamp();
     return OK;
 #endif
-
+    Serial.println("Calibrating please wait...");
     if (varVppCalibrateVpp()) {
         varVppStoreWiperCalib();
     } else {
