@@ -14,7 +14,7 @@
 #define POT_CS   A3
 #define POT_CLK  A4
 #define POT_DAT  A5
-#define VPP      A0
+#define  VPP      A0
 
 #if CONFIG_IDF_TARGET_ESP32S2 == 1
 // ESP32-S2
@@ -54,8 +54,10 @@
 #define VPP_15V5  13
 #define VPP_16V0  14
 #define VPP_16V5  15
+#define VPP_15V7  16
+#define LVPP_5V0  17
 
-#define MAX_WIPER 16
+#define MAX_WIPER 17
 
 #ifdef EXTERNAL
 #define ANALOG_REF_EXTERNAL EXTERNAL
@@ -81,6 +83,7 @@ uint8_t vppWiper[MAX_WIPER] = {0};
 
 
 #define varVppSetMin() varVppSetVppIndex(0x0);
+static int16_t varVppMeasureVpp(int8_t printValue);
 
 uint8_t wiperStat = 0; //enabled / disabled
 int8_t calOffset = 0; // VPP calibration offset: value 10 is 0.1V, value -10 is  -0.1V
@@ -110,14 +113,15 @@ static void varVppReadCalib(void) {
 
 // internal use only - set the wiper value on the digital pot
 static void varVppSetVppIndex(uint8_t value) {
-    uint8_t i;
-
 #if VPP_VERBOSE
     Serial.print(F("varSetVppIndex "));
     Serial.println(value);
 #endif
+
+#if defined(POT_MCP4131)
     mcp4131_write(ADDR_WIPER, value);
 #if VPP_PARANOID
+    uint8_t i;
     i = mcp4131_read(ADDR_WIPER);
     if (i != value) {
         Serial.print(F("Error writing POT value. Expected:"));
@@ -133,16 +137,29 @@ static void varVppSetVppIndex(uint8_t value) {
         mcp4131_enableWiper();
         wiperStat = 1;
     }
+#endif
+
+#if defined(POT_X9C103S)
+    size_t lastIndex = sizeof(vppWiper) - 1;
+    if (value == 0) x9c103s_reg(vppWiper[lastIndex]);
+    x9c103s_reg(value);
+    delay(1);
+#endif
 }
 
 //use by the app code - set the variable voltage
 static void varVppSet(uint8_t value) {
-    uint8_t v;
-    int8_t inc;
     if (value == VPP_5V0 || value >= MAX_WIPER) {
-        varVppSetVppIndex(0);
+#if defined(POT_MCP4131)
+        varVppSetVppIndex(value);
+#else
+        varVppSetVppIndex(vppWiper[LVPP_5V0]);
+#endif
         return;
     }
+#if defined(POT_MCP4131)    
+    uint8_t v;
+    int8_t inc;
 #if VPP_VERBOSE
     Serial.print(F("varSetVpp "));
     Serial.print(value);
@@ -160,7 +177,35 @@ static void varVppSet(uint8_t value) {
             inc = 2;
         }
     }
+#endif
+    
+#if defined(POT_X9C103S)
+    // polling with 3 retries
+    int retries = 3;
+    bool success = false;
+    do {
+        varVppSetVppIndex(vppWiper[value]);
+        delay(10);
+        uint16_t s_volts = varVppMeasureVpp(0);
+        float volts = getFixedVoltage(s_volts);
+        float sp = wiperSetPoints[value];
+        float err = ABS(sp - volts);
+
+        success = err <= 0.1f;
+        if (success) break;
+
+        retries--;
+    } while(retries > 0);
+
+    if (!success) {
+        varVppSet(VPP_5V0);
+#if 1
+        Serial.println("ERR: Voltage not found.");
+#endif
+    }
+#else
     varVppSetVppIndex(vppWiper[value]);
+#endif
 }
 
 // UNO R4/Minima - Renesas IC (significant ADC gain errors measured)
@@ -189,12 +234,15 @@ static void varVppSet(uint8_t value) {
 static int16_t varVppMeasureVpp(int8_t printValue) {
     int8_t i = 0;
     uint16_t r1 = 0;
-    int16_t r2; //correction for ADC gain error
 
     while (i++ < SAMPLE_CNT) {
         r1 += analogRead(VPP);
     }
-    r2 = (r1 / (SAMPLE_DIVIDER * SAMPLE_MULTIPLIER));
+
+    
+#if defined(POT_MCP4131)    
+    int16_t r2; //correction for ADC gain error
+    r2 = (r1 / (SAMPLE_DIVIDER * SAMPLE_MULTIPLIER));    
 #ifdef SAMPLE_OFFSET
     r1+= SAMPLE_OFFSET;
 #endif    
@@ -220,6 +268,18 @@ static int16_t varVppMeasureVpp(int8_t printValue) {
         Serial.println(r2);
 #endif        
     }
+#else
+    r1 /= SAMPLE_CNT;
+    r1 += 22;
+
+    if (printValue) {
+        float volts = getFixedVoltage(r1);
+        Serial.print("volts: \t");
+        Serial.print(volts, 2);
+        Serial.print("\n");
+    }
+#endif // End POT_MCP4131
+    
     return r1;
 }
 
@@ -232,10 +292,11 @@ static uint8_t varVppCalibrateVpp(void) {
     int16_t r2;
     int16_t minDif;
 
+#if defined(POT_MCP4131)
     Serial.print(F("VPP calib. offset: "));
     Serial.println(calOffset);
 
-    varVppSetVppIndex(1);
+    // varVppSetVppIndex(1);
     delay(300); //settle voltage
 
     while (1) {
@@ -313,13 +374,51 @@ static uint8_t varVppCalibrateVpp(void) {
         }
         v += 50; //next voltage to search for is 0.5V higher
     }
+#endif
+
+#if defined(POT_X9C103S)
+    int wipers = WIPER_VOLTS;
+    
+    while(wipers) {
+        int wiper_steps = MAX_WIPER_POS;
+        int vppIndex = WIPER_VOLTS - wipers;
+        float sp = wiperSetPoints[vppIndex];
+
+        while(wiper_steps) {
+            int wiperStep = MAX_WIPER_POS - wiper_steps;    
+            varVppSetVppIndex(wiperStep);
+            delay(20);
+
+            uint16_t s_volts = varVppMeasureVpp(0);
+            float volts = getFixedVoltage(s_volts);
+            float err = ABS(sp - volts);
+
+            // min error of 10%
+            if (err <= 0.1) {
+                vppWiper[vppIndex] = wiperStep;
+                break;
+            }
+            else if (wiper_steps == 0) {
+#if 0
+                Serial.print("Voltage not found: ");
+                Serial.print(sp, 2);
+                Serial.print("\n");
+#endif
+                r1 = FAIL;
+                goto ret;
+            }
+
+            wiper_steps--;
+        }
+        wipers--;
+    }    
+    r1 = OK;
+#endif
 
 ret:
     varVppSet(VPP_5V0);
     return r1;
-
 }
-
 
 static void varVppStoreWiperCalib() {
     uint8_t i = 0;
@@ -344,6 +443,16 @@ static void varVppStoreWiperCalib() {
     }
     EEPROM_END();
 }
+
+static void varVppClearCalib(void) {
+    EEPROM_BEGIN();
+    //clear Afterburner calibration header
+    EEPROM_UPDATE(0, 0);
+    EEPROM_UPDATE(1, 0);
+    EEPROM_END();
+    Serial.println("Calibration cleared.");
+}
+
 
 #if CONFIG_IDF_TARGET_ESP32S2 == 1
 static void analogReference(uint8_t ref) {
@@ -404,7 +513,7 @@ static int8_t varVppCheckCalibration(void) {
         Serial.println(F("I: VPP not calibrated"));
         return FAIL;
     }
-    
+    varVppSet(VPP_5V0);
 #if 0
     // This shoots the VPP to 9V - in theory no GALs should have an issue with that voltage.
     // Also, the On switch should be turned off, preventing VPP to reach the GAL pins.

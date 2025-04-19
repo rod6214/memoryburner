@@ -689,18 +689,23 @@ void setup() {
     if (varVppCheckCalibration()) {
       Serial.println(F("I: VPP calib. OK"));
     }
-  //   // set shift reg Chip select
-  //   pinMode(PIN_SHR_CS, OUTPUT);
-  //   digitalWrite(PIN_SHR_CS, 1); //unselect the POT's SPI bus
+    else {
+      calibrateVpp();
+      Serial.println(F("I: VPP calibrated OK"));
+    }
 
-  //   //setup serial RAM
-  //   if (seRamInit()) {
-  //     Serial.println(F("I: SeRAM OK"));
-  //   }
+    // set shift reg Chip select
+    pinMode(PIN_SHR_CS, OUTPUT);
+    digitalWrite(PIN_SHR_CS, 1); //unselect the POT's SPI bus
+
+    //setup serial RAM
+    if (seRamInit()) {
+      Serial.println(F("I: SeRAM OK"));
+    }
   }
-  // printHelp(0);
+  printHelp(0);
 
-  // Serial.println(">");
+  Serial.println(">");
 }
 
 static void sparseSetup(char clearArray){
@@ -2906,196 +2911,196 @@ void loop() {
 
 
     // read a command from serial terminal or COMMAND_NONE if nothing is received from serial
-    // char command = handleTerminalCommands();
+    char command = handleTerminalCommands();
 
-    // // any unexpected input when uploading fuse map terminates the upload process
-    // if (isUploading && command != COMMAND_UTX && command != COMMAND_NONE) {
-    //   Serial.println(F("ER upload aborted"));
-    //   isUploading = 0;
-    //   lineIndex = 0;
-    // }
+    // any unexpected input when uploading fuse map terminates the upload process
+    if (isUploading && command != COMMAND_UTX && command != COMMAND_NONE) {
+      Serial.println(F("ER upload aborted"));
+      isUploading = 0;
+      lineIndex = 0;
+    }
 
-    // // handle commands received from the serial terminal
-    // switch (command) {
+    // handle commands received from the serial terminal
+    switch (command) {
       
-    //   // print some help
-    //   case COMMAND_HELP: {
-    //     printHelp(1);
-    //   } break;
+      // print some help
+      case COMMAND_HELP: {
+        printHelp(1);
+      } break;
 
-    //   case COMMAND_IDENTIFY_PROGRAMMER : {
-    //     printHelp(0);
-    //   } break;
+      case COMMAND_IDENTIFY_PROGRAMMER : {
+        printHelp(0);
+      } break;
 
-    //   // verify fuse-map bits and bits read from the GAL chip
-    //   case COMMAND_VERIFY_FUSES: {
-    //     if (mapUploaded) {
-    //       if (doTypeCheck()) {
-    //         readOrVerifyGal(1); //just verify, do not overwrite fusemap
-    //       }
-    //     } else {
-    //       printNoFusesError();
-    //     }
-    //   } break;
+      // verify fuse-map bits and bits read from the GAL chip
+      case COMMAND_VERIFY_FUSES: {
+        if (mapUploaded) {
+          if (doTypeCheck()) {
+            readOrVerifyGal(1); //just verify, do not overwrite fusemap
+          }
+        } else {
+          printNoFusesError();
+        }
+      } break;
 
-    //   // handle upload command - start the download of fuse-map
-    //   case COMMAND_UPLOAD: {
-    //     short i;
-    //     // clean fuses
-    //     for (i = 0; i < MAXFUSES; i++) {
-    //       fusemap[i] = 0;
-    //     }
-    //     sparseSetup(1);
-    //     isUploading = 1;
-    //     uploadError = 0;
-    //   } break;
+      // handle upload command - start the download of fuse-map
+      case COMMAND_UPLOAD: {
+        short i;
+        // clean fuses
+        for (i = 0; i < MAXFUSES; i++) {
+          fusemap[i] = 0;
+        }
+        sparseSetup(1);
+        isUploading = 1;
+        uploadError = 0;
+      } break;
 
-    //   // command of the upload protocol
-    //   case COMMAND_UTX : {
-    //     parseUploadLine();
-    //   } break;
+      // command of the upload protocol
+      case COMMAND_UTX : {
+        parseUploadLine();
+      } break;
 
-    //   // read and print the PES
-    //   case COMMAND_READ_PES : {
-    //     char type;
-    //     readPes();
-    //     type = checkGalTypeViaPes();
-    //     parsePes(type);
-    //     printPes(type);
-    //   } break;
+      // read and print the PES
+      case COMMAND_READ_PES : {
+        char type;
+        readPes();
+        type = checkGalTypeViaPes();
+        parsePes(type);
+        printPes(type);
+      } break;
 
-    //   case COMMAND_WRITE_PES : {
-    //     char type;
-    //     type = checkGalTypeViaPes();
-    //     parsePes(type);
-    //     writePes();
-    //   } break;
+      case COMMAND_WRITE_PES : {
+        char type;
+        type = checkGalTypeViaPes();
+        parsePes(type);
+        writePes();
+      } break;
 
-    //   // read fuse-map from the GAL and print it in the JEDEC form
-    //   case COMMAND_READ_FUSES : {
-    //     if (doTypeCheck()) {
-    //       readOrVerifyGal(0); //just read, no verification
-    //       printJedec();
-    //     }
-    //   } break;
+      // read fuse-map from the GAL and print it in the JEDEC form
+      case COMMAND_READ_FUSES : {
+        if (doTypeCheck()) {
+          readOrVerifyGal(0); //just read, no verification
+          printJedec();
+        }
+      } break;
 
-    //   // write current fuse-map to the GAL chip
-    //   case COMMAND_WRITE_FUSES : {
-    //     if (mapUploaded) {
-    //       if (doTypeCheck()) {
-    //         writeGal();
-    //         //security is handled by COMMAND_ENABLE_SECURITY command
-    //       }
-    //     } else {
-    //       printNoFusesError();
-    //     }
-    //   } break;
+      // write current fuse-map to the GAL chip
+      case COMMAND_WRITE_FUSES : {
+        if (mapUploaded) {
+          if (doTypeCheck()) {
+            writeGal();
+            //security is handled by COMMAND_ENABLE_SECURITY command
+          }
+        } else {
+          printNoFusesError();
+        }
+      } break;
 
-    //   // erases the fuse-map on the GAL chip
-    //   case COMMAND_ERASE_GAL: {
-    //     if (doTypeCheck()) {
-    //       eraseGAL(0);
-    //     }
-    //   } break;
-    //   // erases PES and the fuse-map on the GAL chip
-    //   case COMMAND_ERASE_GAL_ALL: {
-    //     if (doTypeCheck()) {
-    //       eraseGAL(1);
-    //     }
-    //   } break;
+      // erases the fuse-map on the GAL chip
+      case COMMAND_ERASE_GAL: {
+        if (doTypeCheck()) {
+          eraseGAL(0);
+        }
+      } break;
+      // erases PES and the fuse-map on the GAL chip
+      case COMMAND_ERASE_GAL_ALL: {
+        if (doTypeCheck()) {
+          eraseGAL(1);
+        }
+      } break;
 
-    //   // sets the security bit
-    //   case COMMAND_ENABLE_SECURITY: {
-    //     if (doTypeCheck()) {
-    //       secureGAL();
-    //     }
-    //   } break;
+      // sets the security bit
+      case COMMAND_ENABLE_SECURITY: {
+        if (doTypeCheck()) {
+          secureGAL();
+        }
+      } break;
 
-    //   // keep atmel power-down feature enabled during write
-    //   case COMMAND_ENABLE_APD: {
-    //     setFlagBit(FLAG_BIT_APD, 1);
-    //     Serial.println(F("OK APD set"));
-    //   } break;
+      // keep atmel power-down feature enabled during write
+      case COMMAND_ENABLE_APD: {
+        setFlagBit(FLAG_BIT_APD, 1);
+        Serial.println(F("OK APD set"));
+      } break;
 
-    //   case COMMAND_DISABLE_APD: {
-    //     setFlagBit(FLAG_BIT_APD, 0);
-    //     Serial.println(F("OK APD cleared"));
-    //   } break;
+      case COMMAND_DISABLE_APD: {
+        setFlagBit(FLAG_BIT_APD, 0);
+        Serial.println(F("OK APD cleared"));
+      } break;
 
-    //   // toggles terminal echo
-    //   case COMMAND_ECHO : {
-    //     echoEnabled = 1 - echoEnabled;
-    //   } break;
+      // toggles terminal echo
+      case COMMAND_ECHO : {
+        echoEnabled = 1 - echoEnabled;
+      } break;
 
-    //   case COMMAND_TEST_VOLTAGE : {
-    //     testVoltage(20);
-    //   } break;
+      case COMMAND_TEST_VOLTAGE : {
+        testVoltage(20);
+      } break;
 
-    //   case COMMAND_SET_GAL_TYPE : {
-    //     char type = line[1] - '0';
-    //     if (type >= 1 && type < LAST_GAL_TYPE) {
-    //       gal = (GALTYPE) type;
-    //       copyGalInfo();
-    //       if (0 == flagBits & FLAG_BIT_TYPE_CHECK) { //no type check requested
-    //         setGalDefaults();
-    //       }
-    //     } else {
-    //       Serial.print(F("ER Unknown gal type "));
-    //       Serial.println(type, DEC);
-    //     }
-    //   } break;
-    //   case COMMAND_ENABLE_CHECK_TYPE: {
-    //     setFlagBit(FLAG_BIT_TYPE_CHECK, 1);
-    //   } break;
-    //   case COMMAND_DISABLE_CHECK_TYPE: {
-    //     int i = 0;
-    //     while(i < 12){
-    //         pes[i++] = 0;
-    //     }
-    //     setFlagBit(FLAG_BIT_TYPE_CHECK, 0);
-    //   } break;
+      case COMMAND_SET_GAL_TYPE : {
+        char type = line[1] - '0';
+        if (type >= 1 && type < LAST_GAL_TYPE) {
+          gal = (GALTYPE) type;
+          copyGalInfo();
+          if (0 == flagBits & FLAG_BIT_TYPE_CHECK) { //no type check requested
+            setGalDefaults();
+          }
+        } else {
+          Serial.print(F("ER Unknown gal type "));
+          Serial.println(type, DEC);
+        }
+      } break;
+      case COMMAND_ENABLE_CHECK_TYPE: {
+        setFlagBit(FLAG_BIT_TYPE_CHECK, 1);
+      } break;
+      case COMMAND_DISABLE_CHECK_TYPE: {
+        int i = 0;
+        while(i < 12){
+            pes[i++] = 0;
+        }
+        setFlagBit(FLAG_BIT_TYPE_CHECK, 0);
+      } break;
 
-    //   case COMMAND_MEASURE_VPP: {
-    //     measureVppValues();
-    //   } break;
+      case COMMAND_MEASURE_VPP: {
+        measureVppValues();
+      } break;
 
-    //   // calibration offset helps to offset the resistor tolerances in voltage dividers and also
-    //   // small differences in analog ref which is ~3.3 V derived from LDO.
-    //   case COMMAND_CALIBRATION_OFFSET: {
-    //     int8_t offset = line[1] - '0';
-    //     if (offset >=0 && offset <= 64) {
-    //       //0:-0.32V 1:-0.31V  2: -0.30V  ... 32:0V  33:0.01V 34: 0.02V ... 64:0.32V
-    //       calOffset = offset - 32;
-    //       Serial.print(F("Using cal offset: "));
-    //       Serial.println(calOffset);
-    //     } else {
-    //       Serial.println(F("ER: cal offset failed"));
-    //     }
-    //   } break;
+      // calibration offset helps to offset the resistor tolerances in voltage dividers and also
+      // small differences in analog ref which is ~3.3 V derived from LDO.
+      case COMMAND_CALIBRATION_OFFSET: {
+        int8_t offset = line[1] - '0';
+        if (offset >=0 && offset <= 64) {
+          //0:-0.32V 1:-0.31V  2: -0.30V  ... 32:0V  33:0.01V 34: 0.02V ... 64:0.32V
+          calOffset = offset - 32;
+          Serial.print(F("Using cal offset: "));
+          Serial.println(calOffset);
+        } else {
+          Serial.println(F("ER: cal offset failed"));
+        }
+      } break;
 
-    //   case COMMAND_CALIBRATE_VPP: {
-    //     calibrateVpp();
-    //   } break;
+      case COMMAND_CALIBRATE_VPP: {
+        calibrateVpp();
+      } break;
 
-    //   case COMMAND_JTAG_PLAYER: {
-    //     startJtagPlayer(line[1] == '1');
-    //     //flush the serial line in case the player ended abruptly
-    //     readGarbage();
-    //   } break;
+      case COMMAND_JTAG_PLAYER: {
+        startJtagPlayer(line[1] == '1');
+        //flush the serial line in case the player ended abruptly
+        readGarbage();
+      } break;
 
-    //   default: {
-    //     if (command != COMMAND_NONE) {
-    //       Serial.print(F("ER Unknown command: "));
-    //       Serial.println(line);
-    //     }
-    //   }
-    // }
+      default: {
+        if (command != COMMAND_NONE) {
+          Serial.print(F("ER Unknown command: "));
+          Serial.println(line);
+        }
+      }
+    }
 
-    // // display prompt character - important for the PC program to check that Arduino
-    // // finished the desired operation
-    // if (command != COMMAND_NONE) {
-    //   Serial.println(F(">"));
-    // }
+    // display prompt character - important for the PC program to check that Arduino
+    // finished the desired operation
+    if (command != COMMAND_NONE) {
+      Serial.println(F(">"));
+    }
 
     // and that's it!
 }
